@@ -1,5 +1,5 @@
 import numpy as np
-from simplextable import SimplexTable 
+from simplextablebuilder import SimplexTableBuilder
 
 def get_dash_value(c, base_column_indices):
     return c[base_column_indices]
@@ -54,6 +54,18 @@ def get_new_v_vector(base_vectors_indices, c, w):
         j += 1
     return v_new
 
+def build_simplex_table(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs):
+    simplex_table_builder = SimplexTableBuilder()
+
+    simplex_table_object = simplex_table_builder.build(
+            len(c), 
+            len(c_dash),
+            base_vectors_indices,
+            non_base_vectors_indices,
+            BAs
+            )
+        
+    return simplex_table_object
 
 def solve(A, base_vectors_indices, b, c, v):
 
@@ -76,15 +88,8 @@ def solve(A, base_vectors_indices, b, c, v):
             deltas.append(delta)
 
         BAs = np.vstack([BAs, np.array(deltas)])
-        simplex_table_object = SimplexTable(
-            len(c), 
-            len(c_dash),
-            base_vectors_indices,
-            non_base_vectors_indices,
-            BAs
-            )
+        simplex_table_object = build_simplex_table(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs)
 
-        simplex_table_object.build()
         v_dash = np.hstack((v_dash, np.dot(c, v)))
         last_column = np.array([v_dash])
         simplex_table_object.add_column(last_column)
@@ -94,7 +99,7 @@ def solve(A, base_vectors_indices, b, c, v):
         if is_v_solution(deltas):
             return v
         
-        simplex_table_object.is_solvable()
+        simplex_table_object.is_solvable(non_base_vectors_indices)
         
         k, I = get_bigger_than_zero_I(simplex_table, non_base_vectors_indices)
 
