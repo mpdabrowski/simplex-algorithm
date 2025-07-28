@@ -1,29 +1,29 @@
 import numpy as np
 from typing import List
 from numpy.typing import NDArray
-from simplextable import SimplexTable
+from .tableau import Tableau
 
-class SimplexTableBuilder:
+class TableauFactory:
 
     def build(
         self, 
-        width: int, 
-        height: int,
+        num_columns: int, 
+        num_rows: int,
         base_vectors_indices: List[int],
         non_base_vectors_indices: List[int],
         BAs: NDArray[np.float64]
-    ) -> SimplexTable:
-        simplex_table = np.array([[0]*(width) for _ in range(height + 1)], dtype=np.float64)
+    ) -> Tableau:
+        simplex_tableau = np.array([[0]*(num_columns) for _ in range(num_rows + 1)], dtype=np.float64)
         r = 0
         k = 0
-        for i in range(width):
+        for i in range(num_columns):
             if i in base_vectors_indices:
-                simplex_table[r][i] = 1.0
+                simplex_tableau[r][i] = 1.0
                 r += 1
             
             if i in non_base_vectors_indices:
-                simplex_table[:, i] = BAs[:, k]
+                simplex_tableau[:, i] = BAs[:, k]
                 k += 1
         
         
-        return SimplexTable(simplex_table)
+        return Tableau(simplex_tableau)

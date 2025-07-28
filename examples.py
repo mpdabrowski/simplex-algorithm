@@ -1,5 +1,5 @@
 import numpy as np
-from simplex import solve
+from src.simplex import solve
 
 """
 First example

@@ -1,5 +1,5 @@
 import numpy as np
-from simplextablebuilder import SimplexTableBuilder
+from .tableau_factory import TableauFactory
 
 def get_dash_value(c, base_column_indices):
     return c[base_column_indices]
@@ -25,14 +25,6 @@ def is_solvable(simplex_table, ind_zero):
                     return True
     
     return False
-
-def get_bigger_than_zero_I(simplex_table, ind_zero):
-    for i in ind_zero:
-        column = simplex_table[:, i]
-        delta = column[-1]
-        if delta > 0:
-            k = i
-            return (k, column[:-1])
         
 def get_new_base_vector_indices(k, js, base_vectors_indices):
     base_vectors_indices = np.array(base_vectors_indices)
@@ -54,10 +46,10 @@ def get_new_v_vector(base_vectors_indices, c, w):
         j += 1
     return v_new
 
-def build_simplex_table(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs):
-    simplex_table_builder = SimplexTableBuilder()
+def build_simplex_tableau(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs):
+    simplex_table_builder = TableauFactory()
 
-    simplex_table_object = simplex_table_builder.build(
+    simplex_tableau = simplex_table_builder.build(
             len(c), 
             len(c_dash),
             base_vectors_indices,
@@ -65,7 +57,7 @@ def build_simplex_table(base_vectors_indices, c, c_dash, non_base_vectors_indice
             BAs
             )
         
-    return simplex_table_object
+    return simplex_tableau
 
 def solve(A, base_vectors_indices, b, c, v):
 
@@ -88,20 +80,19 @@ def solve(A, base_vectors_indices, b, c, v):
             deltas.append(delta)
 
         BAs = np.vstack([BAs, np.array(deltas)])
-        simplex_table_object = build_simplex_table(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs)
+        simplex_tableau = build_simplex_tableau(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs)
 
         v_dash = np.hstack((v_dash, np.dot(c, v)))
         last_column = np.array([v_dash])
-        simplex_table_object.add_column(last_column)
-        simplex_table = simplex_table_object.get_table()
-        print(simplex_table)
+        simplex_tableau.add_column(last_column)
+        print(simplex_tableau)
 
         if is_v_solution(deltas):
             return v
         
-        simplex_table_object.is_solvable(non_base_vectors_indices)
+        simplex_tableau.is_solvable(non_base_vectors_indices)
         
-        k, I = get_bigger_than_zero_I(simplex_table, non_base_vectors_indices)
+        k, I = simplex_tableau.get_bigger_than_zero_I(non_base_vectors_indices)
 
         v_dash = get_dash_value(v, base_vectors_indices)
         minim = float('inf')
