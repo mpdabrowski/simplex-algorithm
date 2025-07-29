@@ -1,5 +1,5 @@
 import numpy as np
-from src.simplex import solve
+from src.simplex import Simplex
 
 """
 First example
@@ -15,7 +15,9 @@ v = np.array([0, 0, 0.5, 0])
 
 base_vectors_indices = [0,2]
 
-result1 = solve(A, base_vectors_indices, b, c, v)
+simplex = Simplex(A,base_vectors_indices,b,c,v)
+
+result1 = simplex.solve()
 
 print("Result 1 = ", result1)
 
@@ -34,7 +36,9 @@ v = np.array([2, 1, 0, 0])
 
 base_vectors_indices = [0,1]
 
-result2 = solve(A, base_vectors_indices, b, c, v)
+simplex = Simplex(A,base_vectors_indices,b,c,v)
+
+result2 = simplex.solve()
 
 print("Result 2 = ", result2)
 
@@ -53,6 +57,8 @@ v = np.array([0, 5/3, 0, 4/3])
 
 base_vectors_indices = [1,3]
 
-result3 = solve(A, base_vectors_indices, b, c, v)
+simplex = Simplex(A,base_vectors_indices,b,c,v)
+
+result3 = simplex.solve()
 
 print("Result 3 = ", result3)

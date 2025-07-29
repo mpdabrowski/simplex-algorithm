@@ -1,100 +1,60 @@
 import numpy as np
 from .tableau_factory import TableauFactory
+from .base_factory import BaseFactory
 
-def get_dash_value(c, base_column_indices):
-    return c[base_column_indices]
-
-def get_column_base(A, base_column_indices):
-    B = np.atleast_2d(A[:, base_column_indices[0]]).T
-    for i in base_column_indices[1:]:
-        column = A[:, i]
-        B = np.hstack((B, np.atleast_2d(column).T))
-
-    return B
-
-def is_v_solution(deltas):
-    return len([i for i in deltas if i > 0]) == 0
-
-def is_solvable(simplex_table, ind_zero):
-    for i in ind_zero:
-        column = simplex_table[:, i]
-        delta = column[-1]
-        if delta > 0:
-            for j in column[:-1]:
-                if j > 0:
-                    return True
-    
-    return False
+class Simplex:
+    def __init__(
+        self,
+        A,
+        base_vectors_indices,
+        b,
+        c, 
+        v        
+    ):
+        self.A = A
+        self.base_vectors_indices = base_vectors_indices
+        self.b = b
+        self.c = c
+        self.v = v
+        self.set_non_base_vector_indices()
         
-def get_new_base_vector_indices(k, js, base_vectors_indices):
-    base_vectors_indices = np.array(base_vectors_indices)
-    out = np.where(base_vectors_indices == js)
-    base_vectors_indices[out[0]] = k
-    
-    return np.sort(base_vectors_indices)
+    def solve(self, show_tableau = False):
 
+        while True:
+            c_dash = self.c[self.base_vectors_indices]
+            v_dash = self.v[self.base_vectors_indices]
+            base = BaseFactory(self.non_base_vectors_indices, self.A).build()
 
-def get_new_A(A, base_vectors_indices):
-    return A[:, base_vectors_indices.tolist()]
+            simplex_tableau = TableauFactory().build(
+                self.base_vectors_indices,
+                self.non_base_vectors_indices,
+                base.get_base_multiplied_by_A(c_dash, self.c)
+            ).add_column(np.array([np.hstack((v_dash, np.dot(self.c, self.v)))]))
+            
+            if show_tableau:
+                print(simplex_tableau)
 
+            if simplex_tableau.is_solution():
+                return self.v
+            
+            if False == simplex_tableau.is_solvable(self.non_base_vectors_indices):
+                raise Exception("Cannot solve this problem")
+            
+            in_index, out_index = self.get_in_and_out_column(v_dash, simplex_tableau) 
+            self.set_new_base_vector_indices(in_index, out_index)
+            self.set_non_base_vector_indices()
+            self.set_new_v()
+            
 
-def get_new_v_vector(base_vectors_indices, c, w):
-    v_new = np.zeros(len(c))
-    j = 0
-    for i in base_vectors_indices:
-        v_new[i] = w[j]
-        j += 1
-    return v_new
+        raise Exception('Error while solving problem')
 
-def build_simplex_tableau(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs):
-    simplex_table_builder = TableauFactory()
+    def set_new_v(self):
+        v_new = self.get_new_v_vector(np.linalg.solve(self.A[:, self.base_vectors_indices.tolist()], self.b))
+        self.v = np.array(v_new)
 
-    simplex_tableau = simplex_table_builder.build(
-            len(c), 
-            len(c_dash),
-            base_vectors_indices,
-            non_base_vectors_indices,
-            BAs
-            )
-        
-    return simplex_tableau
+    def get_in_and_out_column(self, v_dash, simplex_tableau):
+        k, I = simplex_tableau.get_bigger_than_zero_I(self.non_base_vectors_indices)
 
-def solve(A, base_vectors_indices, b, c, v):
-
-    while True:
-        c_dash = get_dash_value(c, base_vectors_indices)
-        v_dash = get_dash_value(v, base_vectors_indices)
-        B = get_column_base(A,base_vectors_indices)
-        non_base_vectors_indices = [i for i in range(len(c)) if i not in base_vectors_indices]
-        B = np.linalg.matrix_power(B, -1)
-        deltas = []
-        BAs = np.array([])
-        for i in non_base_vectors_indices:
-            BA = np.matmul(B, A[:, i])
-            if BAs.size == 0:
-                BAs = np.atleast_2d(BA).T
-            else:
-                BAs = np.hstack((BAs, np.atleast_2d(BA).T))
-            dot_prod = np.dot(c_dash, BA)
-            delta = dot_prod - c[i]
-            deltas.append(delta)
-
-        BAs = np.vstack([BAs, np.array(deltas)])
-        simplex_tableau = build_simplex_tableau(base_vectors_indices, c, c_dash, non_base_vectors_indices, BAs)
-
-        v_dash = np.hstack((v_dash, np.dot(c, v)))
-        last_column = np.array([v_dash])
-        simplex_tableau.add_column(last_column)
-        print(simplex_tableau)
-
-        if is_v_solution(deltas):
-            return v
-        
-        simplex_tableau.is_solvable(non_base_vectors_indices)
-        
-        k, I = simplex_tableau.get_bigger_than_zero_I(non_base_vectors_indices)
-
-        v_dash = get_dash_value(v, base_vectors_indices)
         minim = float('inf')
         min_inx = 0
         for i, val in enumerate(I):
@@ -105,15 +65,23 @@ def solve(A, base_vectors_indices, b, c, v):
                 minim = val
                 min_inx = i
 
-        js = base_vectors_indices[min_inx] 
+        js = self.base_vectors_indices[min_inx]
+        return k,js
 
-        base_vectors_indices = get_new_base_vector_indices(k, js, base_vectors_indices)
-        A_new = get_new_A(A, base_vectors_indices)
-        w = np.linalg.solve(A_new, b)
+    def set_non_base_vector_indices(self):
+        self.non_base_vectors_indices = [i for i, _ in enumerate(self.c) if i not in self.base_vectors_indices]
+ 
+    def set_new_base_vector_indices(self, k, js):
+        base_vectors_indices = np.array(self.base_vectors_indices)
+        out = np.where(base_vectors_indices == js)
+        base_vectors_indices[out[0]] = k
 
-        v_new = get_new_v_vector(base_vectors_indices, c, w)
+        self.base_vectors_indices = np.sort(base_vectors_indices)
 
-        v = np.array(v_new)
-        
-
-    raise Exception('Error while solving problem')
+    def get_new_v_vector(self, w):
+        v_new = np.zeros(len(self.c))
+        j = 0
+        for i in self.base_vectors_indices:
+            v_new[i] = w[j]
+            j += 1
+        return v_new

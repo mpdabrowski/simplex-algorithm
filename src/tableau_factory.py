@@ -7,12 +7,12 @@ class TableauFactory:
 
     def build(
         self, 
-        num_columns: int, 
-        num_rows: int,
         base_vectors_indices: List[int],
         non_base_vectors_indices: List[int],
         BAs: NDArray[np.float64]
     ) -> Tableau:
+        num_columns = len(base_vectors_indices) + len(non_base_vectors_indices)
+        num_rows = len(non_base_vectors_indices)
         simplex_tableau = np.array([[0]*(num_columns) for _ in range(num_rows + 1)], dtype=np.float64)
         r = 0
         k = 0
